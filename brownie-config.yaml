@@ -5,9 +5,9 @@ wallets:
   account-2: ${ACCOUNT_2}
 
 networks:
-  # default: localnet
+  default: localnet
   # default: bsc-test
-  default: bsc-main
+  # default: bsc-main
 
 dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.8.2
