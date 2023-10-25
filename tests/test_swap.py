@@ -72,13 +72,15 @@ def test_swapBNBForTokens(peniwallet, token, accounts):
 def test_swapTokensForBNB(peniwallet, token, accounts):
     # Approve the Peniwallet contract to spend the sender's tokens
     amount = web3.toWei(1000000, 'ether')
-    # token.approve(peniwallet.address, amount, {'from': accounts[0]})
+    token.approve(peniwallet.address, amount, {'from': accounts[0]})
 
-    # Generate a signature for the transfer
+    # Generate a signature for the swap
     signature, message_data = prepare_swap_data(
-        peniwallet.address, token.address, accounts, amount=amount)
+        peniwallet.address, token.address, "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", accounts, amount=amount)
+
     print(signature)
     print(message_data)
+
     old_token_balance = token.balanceOf(accounts[0])
     old_bnb_balance = accounts[0].balance()
     # Perform the transfer
@@ -103,25 +105,24 @@ def test_swapTokensForBNB(peniwallet, token, accounts):
     assert accounts[0].balance() != old_bnb_balance
 
 
-def test_swapTokensForTokens(peniwallet, token, accounts):
+def test_swapTokensForTokens(peniwallet, tokenIn, tokenOut, accounts):
     # Approve the Peniwallet contract to spend the sender's tokens
     amount = web3.toWei(1000000, 'ether')
     # token.approve(peniwallet.address, amount, {'from': accounts[0]})
 
     # Generate a signature for the transfer
     signature, message_data = prepare_swap_data(
-        peniwallet.address, token.address, accounts, amount=amount)
+        peniwallet.address, tokenIn.address, tokenOut.address, accounts, amount=amount)
     print(signature)
     print(message_data)
-    old_token_balance = token.balanceOf(accounts[0])
-    old_bnb_balance = accounts[0].balance()
-    # Perform the transfer
+    old_tokenIn_balance = tokenIn.balanceOf(accounts[0])
+    old_tokenOut_balance = tokenOut.balanceOf(accounts[0])
+
+    # Perform the swap
     peniwallet.swapTokensForTokens(
-        message_data['tokenA'],
-        message_data['tokenB'],
+        [message_data['tokenA'], message_data['tokenB']],
         message_data['from'],
         message_data['amountA'],
-        message_data['amountB'],
         message_data['nonce'],
         message_data['deadline'],
         signature,
@@ -129,11 +130,11 @@ def test_swapTokensForTokens(peniwallet, token, accounts):
     )
 
     # Check that the transfer was successful
-    print(f"old_token_balance: {old_token_balance}")
-    print(f"old_bnb_balance: {old_bnb_balance}")
+    print(f"old_tokenIn_balance: {old_tokenIn_balance}")
+    print(f"old_tokenOut_balance: {old_tokenOut_balance}")
 
-    print(f"new_token_balance: {token.balanceOf(accounts[0])}")
-    print(f"new_bnb_balance: {accounts[0].balance()}")
+    print(f"new_tokenIn_balance: {tokenIn.balanceOf(accounts[0])}")
+    print(f"new_tokenOut_balance: {tokenOut.balanceOf(accounts[0])}")
 
-    assert token.balanceOf(accounts[0]) < old_token_balance
-    assert accounts[0].balance() != old_bnb_balance
+    assert tokenIn.balanceOf(accounts[0]) < old_tokenIn_balance
+    assert tokenOut.balanceOf(accounts[0]) < old_tokenOut_balance
