@@ -43,8 +43,7 @@ def prepare_transfer_data(contract, token, accounts, amount = 500):
         }
     }
 
-    account: LocalAccount = Account.from_key("0x110854350f206b75d3824dd19cefdde5f1e6359c3e3bab5b62f8b21541aa6fa2")
-    # account: LocalAccount = Account.from_key(accounts[0].private_key)
+    account: LocalAccount = Account.from_key("0x77f9759818d266f09c7f96dac8d7e6af15f66858180f06f11caaea2ee627efc0")
     encoded_message = encode_structured_data(message)
     signature: SignedMessage = account.sign_message(encoded_message)
     return signature.signature.hex(), message_data

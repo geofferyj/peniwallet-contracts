@@ -1,6 +1,6 @@
 from eth_account import Account
 import pytest
-from brownie import Peniwallet, chain, web3, ERC20Mock, config, network
+from brownie import Peniwallet, chain, web3, BEP20XRP, config, network
 from brownie import accounts as _accounts
 from eth_account.datastructures import SignedMessage
 from eth_account.messages import encode_structured_data
@@ -17,16 +17,17 @@ def accounts():
 
 @pytest.fixture(scope="module")
 def peniwallet(accounts):
-    return Peniwallet.deploy(1700, 2000, 5000, 100, {'from': accounts[0]})
-    # return Peniwallet.at('0x85eaAc08bd9203f42715527CC4258cE759F4C243')
-    # return Peniwallet.at('0x3D1c49B450D5256255524eD1065A52ABc7256070')
+    
+    return Peniwallet[-1] if Peniwallet else Peniwallet.deploy(
+        1700,
+        2000,
+        5000,
+        100,
+        "0x7D23030D967d26462966Fa8E6968EADe0F7a2361",
+        "0x527A39f480dE9126d48B1B23215Bf8C0a784F447",
+        {'from': accounts[0]})
 
 @pytest.fixture(scope="module")
 def token(accounts):
-    # USDT
-    # return ERC20Mock.at('0x55d398326f99059fF775485246999027B3197955')
 
-    # WKC
-    # return ERC20Mock.at('0x6ec90334d89dbdc89e08a133271be3d104128edb')
-
-    return ERC20Mock.deploy({'from': accounts[0]})
+    return BEP20XRP.at("0xD309CD40E0fC4c463a28bAd37b644705220cE348")

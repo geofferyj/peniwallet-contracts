@@ -117,10 +117,9 @@ interface IPancakeFactory {
  */
 
 contract Peniwallet is EIP712Verifier {
-    address private constant PancakeSwapRouterAddress =
-        0x10ED43C718714eb63d5aA57B78B54704E256024E;
+    address public PancakeSwapRouterAddress;
 
-    address private constant USDT = 0x55d398326f99059fF775485246999027B3197955;
+    address public USDT;
 
     /**
      * @dev stores admins
@@ -180,6 +179,12 @@ contract Peniwallet is EIP712Verifier {
     uint256 public constant SPRAY = 2;
 
     /**
+     * @dev Nonces for each tracsaction
+     */
+
+    mapping(address => uint256) nonces;
+
+    /**
      * @dev Emitted when gas is sent to a user
      */
     event GasSent(address indexed sender, address receiver, uint256 amount);
@@ -237,15 +242,17 @@ contract Peniwallet is EIP712Verifier {
         uint256 _transferFee,
         uint256 _swapFee,
         uint256 _sprayFee,
-        uint256 _minFee
+        uint256 _minFee,
+        address _PancakeSwapRouterAddress,
+        address _USDT
     ) {
         admins[msg.sender] = true;
         setFeeMultiplier(TRANSFER, _transferFee);
         setFeeMultiplier(SWAP, _swapFee);
         setFeeMultiplier(SPRAY, _sprayFee);
         setMinFee(_minFee);
-
-        // create project for the contract
+        PancakeSwapRouterAddress = _PancakeSwapRouterAddress;
+        USDT = _USDT;
     }
 
     /**
@@ -255,6 +262,8 @@ contract Peniwallet is EIP712Verifier {
         require(admins[msg.sender], "Only admins can call this function");
         _;
     }
+
+    // Nonce Management
 
     /**
      * @dev function to add an admin
@@ -372,6 +381,8 @@ contract Peniwallet is EIP712Verifier {
         address _token
     ) private view returns (uint256 _minFeeInToken) {
         IPancakeRouter router = IPancakeRouter(PancakeSwapRouterAddress);
+        IPancakeFactory factory = IPancakeFactory(router.factory());
+
         if (_token == address(0)) {
             return minFee;
         }
@@ -380,22 +391,13 @@ contract Peniwallet is EIP712Verifier {
             return minFee;
         }
 
-        address bnbTokenPair = IPancakeFactory(router.factory()).getPair(
-            _token,
-            router.WETH()
-        );
-        address usdtTokenPair = IPancakeFactory(router.factory()).getPair(
-            _token,
-            USDT
-        );
-        address bnbUsdtPair = IPancakeFactory(router.factory()).getPair(
-            router.WETH(),
-            USDT
-        );
+        address bnbTokenPair = factory.getPair(_token, router.WETH());
+        address usdtTokenPair = factory.getPair(_token, USDT);
+        address bnbUsdtPair = factory.getPair(router.WETH(), USDT);
 
         require(
-            bnbTokenPair != address(0) && usdtTokenPair != address(0),
-            "Pair does not exist"
+            bnbTokenPair != address(0) || usdtTokenPair != address(0),
+            "No Supported Pairs exists for the token"
         );
 
         if (bnbTokenPair != address(0)) {
@@ -448,12 +450,15 @@ contract Peniwallet is EIP712Verifier {
         uint256 feeDecimals = 3;
         uint256 _feeRatio = feeMultiplier[_type];
 
+        // Calculate the fee based on the transaction amount and fee ratio
         uint256 fee = ((_amount * 10 ** feeDecimals) * _feeRatio) /
             (100 * 10 ** feeDecimals);
 
+        // Adjust fee to the proper decimal representation
         fee = fee / (10 ** feeDecimals);
 
-        uint256 minFeeInToken = 10; //_calculateMinFee(_token);
+        // Get the minimum fee in tokens (commented out for demonstration purposes)
+        uint256 minFeeInToken = _calculateMinFee(_token);
 
         if (fee < minFeeInToken) {
             fee = minFeeInToken;
@@ -488,7 +493,7 @@ contract Peniwallet is EIP712Verifier {
                 owner: address(this),
                 token: _token,
                 balance: fee,
-                lastWithdrawal: block.timestamp
+                lastWithdrawal: 0
             });
             fees[address(this)].push(newFee);
             return;
@@ -503,7 +508,7 @@ contract Peniwallet is EIP712Verifier {
                     owner: address(this),
                     token: _token,
                     balance: fee,
-                    lastWithdrawal: block.timestamp
+                    lastWithdrawal: 0
                 });
                 fees[address(this)].push(newFee);
             }
@@ -800,8 +805,8 @@ contract Peniwallet is EIP712Verifier {
                     nonce: _nonce,
                     deadline: _deadline
                 }),
-                
-                _signature),
+                _signature
+            ),
             "Invalid signature: Signer is not the sender"
         );
 
@@ -901,17 +906,50 @@ contract Peniwallet is EIP712Verifier {
     }
 
     /**
-     * @dev function to withdraw tokens from the contract
+     * @dev function to withdraw admin fees
      * @param _token the address of the token to withdraw
-     * @notice this function is only callable by admins
      */
-    function withdrawTokens(address _token) public onlyAdmin {
-        IErc20(_token).transfer(
-            msg.sender,
-            IErc20(_token).balanceOf(address(this))
-        );
+    function withdrawAdminFees(address _token) public onlyAdmin{
+        
+
+        Fee memory fee;
+        for (uint256 i = 0; i < fees[address(this)].length; i++) {
+            if (fees[address(this)][i].token == _token) {
+                fee = fees[address(this)][i];
+                break;
+            }
+        }
+
+        require(fee.balance > 0, "Insufficient balance");
+
+        uint256 amount = fee.balance;
+        fee.balance = 0;
+        fee.lastWithdrawal = block.timestamp;
+
+        IErc20(_token).transfer(msg.sender, amount);
     }
 
+    /**
+     * @dev function to recover expired fees
+     * @param _token the address of the token to withdraw
+     */
+    function recoverFees(address _token)public onlyAdmin{
+        address dev = projects[_token];
+
+        Fee memory fee;
+        for (uint256 i = 0; i < fees[dev].length; i++) {
+            if (fees[dev][i].token == _token) {
+                fee = fees[dev][i];
+                break;
+            }
+        }
+
+        require(fee.lastWithdrawal + 365 days < block.timestamp, "Fee has not expired");
+        require(fee.balance > 0, "Insufficient balance");
+
+        IErc20(_token).transfer(msg.sender, fee.balance);
+    }
+    
     receive() external payable {}
 
     fallback() external payable {}

@@ -54,6 +54,11 @@ def test_fee_multiplier_set_event(peniwallet, accounts):
 
 def test_calculate_fees(peniwallet, accounts, token):
     # Calculate the fees for a transfer
+
+    # estimate initial gas for the transaction
+
+    # pass initial fee to the function and tx type to the function
+
     fees = peniwallet.estimateFees(token.address, web3.Web3.toWei(100000, "ether"), 0, {'from': accounts[0]})
     assert web3.Web3.fromWei(fees, "ether") == 1700
     
