@@ -143,10 +143,10 @@ contract Peniwallet is EIP712Verifier {
     }
 
     /**
-     * @dev mapping of projects to fees and details
+     * @dev mapping of dev to projects to fees details
      */
-    //      token      list of fee details
-    mapping(address => Fee[]) public fees;
+    //      dev     =>           token  => fee
+    mapping(address => mapping (address => Fee)) public fees;
 
     /**
      * @dev minimum fee charged on each transaction
@@ -232,6 +232,11 @@ contract Peniwallet is EIP712Verifier {
     );
 
     /**
+     * @dev Emitted when a fee is withdrawn
+    */
+    event FeeWithdrawn(address indexed dev, address indexed token, uint256 amount, uint256 timestamp);
+
+    /**
      * @dev Constructor
      * @param _transferFee the fee charged on transfers
      * @param _swapFee the fee charged on swaps
@@ -303,25 +308,14 @@ contract Peniwallet is EIP712Verifier {
 
     /**
      * @dev function to register a project
-     * @param _projectOwner the address of the project owner
-     * @param _projectAddress the address of the project
+     * @param _dev the address of the project owner
+     * @param _token the address of the project
      */
-    function registerProject(
-        address _projectOwner,
-        address _projectAddress
-    ) public onlyAdmin {
-        projects[_projectAddress] = _projectOwner;
-        // create fee for project
-        Fee memory newFee = Fee({
-            owner: _projectOwner,
-            token: _projectAddress,
-            balance: 0,
-            lastWithdrawal: block.timestamp
-        });
-
-        fees[_projectOwner].push(newFee);
-
-        emit ProjectRegistered(_projectOwner, _projectAddress, msg.sender);
+    function registerProject(address _token, address _dev) public onlyAdmin{
+        projects[_token] = _dev;
+        fees[_dev][_token].owner = _dev;
+        fees[_dev][_token].token = _token;
+        emit ProjectRegistered(_dev, _token, msg.sender);
     }
 
     /**
@@ -360,14 +354,7 @@ contract Peniwallet is EIP712Verifier {
         address _owner,
         address _token
     ) public view returns (Fee memory) {
-        Fee memory fee;
-        for (uint256 i = 0; i < fees[_owner].length; i++) {
-            if (fees[_owner][i].token == _token) {
-                fee = fees[_owner][i];
-                break;
-            }
-        }
-        return fee;
+        return fees[_owner][_token];
     }
 
     /**
@@ -457,7 +444,7 @@ contract Peniwallet is EIP712Verifier {
         // Adjust fee to the proper decimal representation
         fee = fee / (10 ** feeDecimals);
 
-        // Get the minimum fee in tokens (commented out for demonstration purposes)
+        // Get the minimum fee in tokens 
         uint256 minFeeInToken = _calculateMinFee(_token);
 
         if (fee < minFeeInToken) {
@@ -474,45 +461,28 @@ contract Peniwallet is EIP712Verifier {
     function shareFees(address _token, uint256 _amount) private {
         // get project developer
         address developer = projects[_token];
-        uint256 devFee = (_amount * devFeeShare) / 100;
-        uint256 fee = _amount - devFee;
-
+        uint256 fee;
         if (developer == address(0)) {
             fee = _amount;
         } else {
-            for (uint256 i = 0; i < fees[developer].length; i++) {
-                if (fees[developer][i].token == _token) {
-                    fees[developer][i].balance += devFee;
-                    break;
-                }
-            }
+            uint256 devShare = (_amount * devFeeShare) / 100;
+            fees[developer][_token].balance += devShare;
+            fee = _amount - devShare;
         }
 
-        if (fees[address(this)].length == 0) {
+
+        if (fees[address(this)][_token].token == address(0)) {
             Fee memory newFee = Fee({
                 owner: address(this),
                 token: _token,
                 balance: fee,
                 lastWithdrawal: 0
             });
-            fees[address(this)].push(newFee);
+            fees[address(this)][_token] = newFee;
             return;
         }
 
-        for (uint256 i = 0; i < fees[address(this)].length; i++) {
-            if (fees[address(this)][i].token == _token) {
-                fees[address(this)][i].balance += _amount;
-                break;
-            } else if (i == fees[address(this)].length - 1) {
-                Fee memory newFee = Fee({
-                    owner: address(this),
-                    token: _token,
-                    balance: fee,
-                    lastWithdrawal: 0
-                });
-                fees[address(this)].push(newFee);
-            }
-        }
+        fees[address(this)][_token].balance += fee;
     }
 
     /**
@@ -770,14 +740,14 @@ contract Peniwallet is EIP712Verifier {
         address _token,
         address _from,
         address[] memory _recipients,
-        uint256 _amount,
+        uint256 _amount, // for one address
         uint256 _nonce,
         uint256 _deadline,
         bytes memory _signature
     ) public returns (bool success) {
         IErc20 token = IErc20(_token);
-        uint256 spray_value = _amount * (10 ** uint256(token.decimals()));
-        uint256 total = spray_value * _recipients.length;
+        uint256 spray_value = _amount;
+        uint256 total = spray_value * _recipients.length; // for everybody ( pass in from outside)
         uint256 fee = _calculateFee(_token, total, SPRAY);
 
         // check that the recipient list is <= 200
@@ -875,26 +845,14 @@ contract Peniwallet is EIP712Verifier {
      * @param _token the address of the token to withdraw
      */
     function withdrawFees(address _token) public {
-        require(
-            projects[_token] == msg.sender,
-            "Only project owner can call this function"
-        );
-
-        Fee memory fee;
-        for (uint256 i = 0; i < fees[msg.sender].length; i++) {
-            if (fees[msg.sender][i].token == _token) {
-                fee = fees[msg.sender][i];
-                break;
-            }
-        }
-
-        require(fee.balance > 0, "Insufficient balance");
-
-        uint256 amount = fee.balance;
-        fee.balance = 0;
+        Fee storage fee = fees[msg.sender][_token];
+        require(fee.balance > 0, "No fees to withdraw");
         fee.lastWithdrawal = block.timestamp;
+        uint256 balanceToWithdraw = fee.balance;
+        fee.balance = 0;
 
-        IErc20(_token).transfer(msg.sender, amount);
+        require(IErc20(_token).transfer(msg.sender, balanceToWithdraw), "Transfer failed");
+        emit FeeWithdrawn(msg.sender, _token, balanceToWithdraw, block.timestamp);
     }
 
     /**
@@ -910,15 +868,7 @@ contract Peniwallet is EIP712Verifier {
      * @param _token the address of the token to withdraw
      */
     function withdrawAdminFees(address _token) public onlyAdmin{
-        
-
-        Fee memory fee;
-        for (uint256 i = 0; i < fees[address(this)].length; i++) {
-            if (fees[address(this)][i].token == _token) {
-                fee = fees[address(this)][i];
-                break;
-            }
-        }
+        Fee memory fee = fees[address(this)][_token];
 
         require(fee.balance > 0, "Insufficient balance");
 
@@ -936,20 +886,14 @@ contract Peniwallet is EIP712Verifier {
     function recoverFees(address _token)public onlyAdmin{
         address dev = projects[_token];
 
-        Fee memory fee;
-        for (uint256 i = 0; i < fees[dev].length; i++) {
-            if (fees[dev][i].token == _token) {
-                fee = fees[dev][i];
-                break;
-            }
-        }
+        Fee memory fee = fees[dev][_token];
 
         require(fee.lastWithdrawal + 365 days < block.timestamp, "Fee has not expired");
         require(fee.balance > 0, "Insufficient balance");
 
         IErc20(_token).transfer(msg.sender, fee.balance);
     }
-    
+
     receive() external payable {}
 
     fallback() external payable {}
