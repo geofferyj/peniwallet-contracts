@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.0;
 
 /**
  * @title EIP712Verifier
@@ -63,15 +63,14 @@ contract EIP712Verifier {
         address from;
         address[] receivers;
         uint256 amount;
-        uint256 nonce;
-        uint256 deadline;
+        string code;
     }
 
     /**
      * @dev EIP-712 type hash for the SprayTransaction data type
      */
     bytes32 public constant SprayTransaction_TYPEHASH = keccak256(
-        "SprayTransaction(address token,address from,address[] receivers,uint256 amount,uint256 nonce,uint256 deadline)"
+        "SprayTransaction(address token,address from,address[] receivers,uint256 amount,string code)"
     );
 
 
@@ -99,7 +98,7 @@ contract EIP712Verifier {
         bytes memory signature
     ) internal view returns (bool) {
         // Extract v, r, and s from the signature
-        require(signature.length == 65, "Invalid signature length");
+        require(signature.length == 65, "Invalid signature");
         // Create a hash of the Transaction data using EIP-712 encoding
         bytes32 structHash = keccak256(
             abi.encode(
@@ -125,7 +124,7 @@ contract EIP712Verifier {
         bytes memory signature
     ) internal view returns (bool) {
         // Extract v, r, and s from the signature
-        require(signature.length == 65, "Invalid signature length");
+        require(signature.length == 65, "Invalid signature");
         // Create a hash of the Transaction data using EIP-712 encoding
         bytes32 structHash = keccak256(
             abi.encode(
@@ -152,17 +151,16 @@ contract EIP712Verifier {
         bytes memory signature
     ) internal view returns (bool) { 
         // Extract v, r, and s from the signature
-        require(signature.length == 65, "Invalid signature length");
+        require(signature.length == 65, "Invalid signature");
         // Create a hash of the Transaction data using EIP-712 encoding
         bytes32 structHash = keccak256(
             abi.encode(
                 SprayTransaction_TYPEHASH,
                 transaction.token,
                 transaction.from,
-                transaction.receivers,
+                keccak256(abi.encodePacked(transaction.receivers)),
                 transaction.amount,
-                transaction.nonce,
-                transaction.deadline
+                keccak256(abi.encodePacked(transaction.code))
             )
         );
 

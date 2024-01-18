@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "peniwallet-contracts"
+version = "0.1.0"
+description = "container for peniwallet contracts"
+authors = ["geofferyj <geofferyjoseph1@gmail.com>"]
+readme = "README.md"
+packages = [{include = "peniwallet_contracts"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+eth-ape = "^0.7.4"
+
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

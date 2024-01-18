@@ -1,5 +1,6 @@
-from brownie import EIP712Verifier, accounts
+from ape import accounts
+from ape.project import EIP712Verifier
 
 
 def deploy_verifier():
-    return EIP712Verifier.deploy({'from': accounts[0]})
+    return EIP712Verifier.deploy(sender=accounts[0])

@@ -1,0 +1,26 @@
+name: peniwallet
+
+ethereum:
+  default_network: local
+  local:
+    default_provider: ganache
+  
+ganache:
+  server:
+    port: 8545
+
+
+# solidity:
+#   version: 0.8.14
+
+plugins:
+  - name: solidity
+  - name: ganache
+
+test: 
+  mnemonic: oil maid tray come wealth fiction width pudding material joke change increase
+  number_of_accounts: 10
+  
+
+  
+
