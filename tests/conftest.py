@@ -16,7 +16,7 @@ def peniwallet(project, accounts):
 @pytest.fixture(scope="module")
 def token(project):
 
-    return project.BEP20XRP.at("0xD309CD40E0fC4c463a28bAd37b644705220cE348")
+    return project.BEP20XRP.at("0x260161cd2787E65eB34801547E52396AEC87deC7")
 
 
 @pytest.fixture(scope="module")

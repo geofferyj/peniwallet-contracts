@@ -24,4 +24,4 @@ test-transfer:
 
 test: 
 	@echo "Testing all"
-	ape test -I -s
+	ape test -s

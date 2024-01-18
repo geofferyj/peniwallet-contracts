@@ -11,8 +11,8 @@ from eth_account.signers.local import LocalAccount
 def prepare_transfer_data(contract, token, accounts, nonce, amount = 500):
     message_data = {
         'token': token,
-        'from': accounts[0].address,
-        'to': accounts[1].address,
+        'from': accounts[1].address,
+        'to': accounts[0].address,
         'amount': amount,
         'nonce': nonce,
         'deadline': chain.pending_timestamp + 3600
@@ -44,7 +44,7 @@ def prepare_transfer_data(contract, token, accounts, nonce, amount = 500):
         }
     }
 
-    account: LocalAccount = Account.from_key("0x77f9759818d266f09c7f96dac8d7e6af15f66858180f06f11caaea2ee627efc0")
+    account: LocalAccount = Account.from_key("0x4417c04ddfd88b3fdaaffba80ce8e071da0e0137c55efb81c2beb1c0cc1d33b8")
     encoded_message = encode_typed_data(full_message=message)
     signature: SignedMessage = account.sign_message(encoded_message)
     return signature.signature.hex(), message_data
@@ -53,12 +53,12 @@ def prepare_transfer_data(contract, token, accounts, nonce, amount = 500):
 def test_transfer(peniwallet, token, accounts):
 
     # Approve the Peniwallet contract to spend the sender's tokens
-    token.approve(peniwallet.address, token.totalSupply(), sender = accounts[0])
+    token.approve(peniwallet.address, token.totalSupply(), sender = accounts[1])
     amount = Web3.to_wei(100000, 'ether')
 
     # get nonce
-    nonce = peniwallet.getNonce(accounts[0].address)
-    print(f"nonce: {nonce} for address: {accounts[0].address}")
+    nonce = peniwallet.getNonce(accounts[1].address)
+    print(f"nonce: {nonce} for address: {accounts[1].address}")
 
     # Generate a signature for the transfer
     signature, message_data = prepare_transfer_data(peniwallet.address, token.address, accounts, nonce, amount=amount)
@@ -75,14 +75,14 @@ def test_transfer(peniwallet, token, accounts):
         message_data['deadline'],
         signature,
         21000,
-        sender = accounts[0]
+        sender = accounts[1]
     )
 
     # Check that the transfer was successful
-    print("token.balanceOf(accounts[1]):", token.balanceOf(accounts[1]))
     print("token.balanceOf(accounts[0]):", token.balanceOf(accounts[0]))
-    assert token.balanceOf(accounts[0]) < old_balance_0
-    assert token.balanceOf(accounts[1]) > old_balance_1
+    print("token.balanceOf(accounts[1]):", token.balanceOf(accounts[1]))
+    assert token.balanceOf(accounts[1]) < old_balance_1
+    assert token.balanceOf(accounts[0]) > old_balance_0
 
 def test_transfer_expired(peniwallet, token, accounts):
     

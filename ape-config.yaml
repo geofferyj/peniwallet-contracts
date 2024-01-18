@@ -9,6 +9,8 @@ ganache:
   server:
     port: 8545
 
+bsc:
+  
 
 # solidity:
 #   version: 0.8.14
@@ -16,6 +18,7 @@ ganache:
 plugins:
   - name: solidity
   - name: ganache
+  - name: bsc
 
 test: 
   mnemonic: oil maid tray come wealth fiction width pudding material joke change increase

@@ -41,6 +41,14 @@ def test_calculate_fees(peniwallet, accounts, token):
 
     # pass initial fee to the function and tx type to the function
 
-    fees = peniwallet.estimateFees(token.address, web3.Web3.to_wei(100000, "ether"), 0, 21000, sender = accounts[0])
-    assert int(web3.Web3.from_wei(fees, "ether")) == 1700
+    fees = peniwallet.estimateFees(
+        token.address, # token
+        web3.Web3.to_wei(1000, "ether"), # amount
+        0, # tx type
+        21000, # initial gas
+        sender = accounts[0],
+        )
+
+    print("fees", web3.Web3.from_wei(fees, "ether"))
+    assert int(web3.Web3.from_wei(fees, "ether")) == 17
     

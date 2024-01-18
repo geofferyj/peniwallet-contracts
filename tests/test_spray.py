@@ -10,7 +10,7 @@ def prepare_spray_data(contract, token, accounts, receivers, amount=500):
 
     message_data = {
         'token': token,
-        'from': accounts[0].address,
+        'from': accounts[1].address,
         'receivers': receivers,
         'amount': amount,
         'code': 'NWBx76'
@@ -41,7 +41,7 @@ def prepare_spray_data(contract, token, accounts, receivers, amount=500):
         }
     }
 
-    account: LocalAccount = Account.from_key("0x77f9759818d266f09c7f96dac8d7e6af15f66858180f06f11caaea2ee627efc0")
+    account: LocalAccount = Account.from_key("0x4417c04ddfd88b3fdaaffba80ce8e071da0e0137c55efb81c2beb1c0cc1d33b8")
     encoded_message = encode_typed_data(full_message=message)
     signature: SignedMessage = account.sign_message(encoded_message)
     return signature.signature.hex(), message_data
@@ -72,7 +72,7 @@ def test_spray_token(peniwallet, token, accounts, addresses):
         message_data['code'],
         signature,
         21000,
-        sender = accounts[0]
+        sender = accounts[1]
     )
 
     # Check that the transfer was successful

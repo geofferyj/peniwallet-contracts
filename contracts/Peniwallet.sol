@@ -830,8 +830,7 @@ contract Peniwallet is EIP712Verifier {
         address[] memory _recipients,
         uint256 value
     ) public payable returns (bool success) {
-        uint256 spray_value = value * (10 ** 18);
-        uint256 total = spray_value * _recipients.length;
+        uint256 total = value * _recipients.length;
         uint256 fee = _calculateFee(address(0), total, SPRAY, 0);
 
         // check that user has enough BNB
@@ -841,9 +840,8 @@ contract Peniwallet is EIP712Verifier {
         require(_recipients.length <= 200, "Recipient list is too long");
 
         // transfer the fee
-
         for (uint i = 0; i < _recipients.length; i++) {
-            payable(_recipients[i]).transfer(spray_value);
+            payable(_recipients[i]).transfer(value);
         }
 
         payable(address(this)).transfer(fee);
